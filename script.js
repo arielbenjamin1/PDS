@@ -1,5 +1,57 @@
 (() => {
 'use strict';
+// Consistent vector icons for iPhone/iPad Safari (avoids emoji-font substitutions).
+// Keep the original links, actions and visible arrow positions unchanged.
+const pdsArrowPaths = {
+  '↗': 'M5 19 19 5 M8 5h11v11',
+  '→': 'M4 12h16 M13 5l7 7-7 7',
+  '↑': 'M12 20V4 M5 11l7-7 7 7',
+  '❯': 'M8 3l9 9-9 9'
+};
+function pdsArrowIcon(character) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 24 24');
+  svg.setAttribute('width','1em');
+  svg.setAttribute('height','1em');
+  svg.setAttribute('fill','none');
+  svg.setAttribute('stroke','currentColor');
+  svg.setAttribute('stroke-width','2');
+  svg.setAttribute('stroke-linecap','square');
+  svg.setAttribute('stroke-linejoin','miter');
+  svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('focusable','false');
+  svg.classList.add('pds-vector-arrow');
+  svg.style.display='inline-block';
+  svg.style.verticalAlign='-0.12em';
+  svg.style.flexShrink='0';
+  const path=document.createElementNS(ns,'path');
+  path.setAttribute('d',pdsArrowPaths[character]);
+  svg.append(path);
+  return svg;
+}
+function pdsReplaceArrowGlyphs(root) {
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const targets=[];
+  let node;
+  while((node=walker.nextNode())) {
+    if (!/[↗→↑❯]/u.test(node.nodeValue)) continue;
+    const parent=node.parentElement;
+    if (!parent || parent.closest('script,style,textarea,svg')) continue;
+    targets.push(node);
+  }
+  for(const textNode of targets) {
+    const frag=document.createDocumentFragment();
+    for(const piece of textNode.nodeValue.split(/([↗→↑❯])/u)) {
+      if(!piece) continue;
+      if(pdsArrowPaths[piece]) frag.append(pdsArrowIcon(piece));
+      else frag.append(document.createTextNode(piece));
+    }
+    textNode.replaceWith(frag);
+  }
+}
+pdsReplaceArrowGlyphs(document.body);
+
 const registration = 'https://app.thestudiodirector.com/dancepds/portal.sd?page=Login';
 const classes = {
  combination:{kicker:'CLASS GUIDE / FIRST STEPS',title:'PRE BALLET / TAP',intro:'A warm introduction to dance fundamentals through movement, music and early technique.',detail:'PDS lists Pre Ballet/Tap 1 and 2, Ballet/Tap 1 and successive combination classes. The first combination programs divide class time between ballet and tap, building musicality, self-expression and discipline. Older combination levels add jazz and progress toward more advanced classes.',note:'<strong>What to know:</strong> Class levels and exact placement are confirmed by the studio. Ballet and tap footwear, hair and clothing guidelines vary by class.'},
@@ -25,7 +77,7 @@ if(toggle&&mobile){toggle.addEventListener('click',()=>{const expand=toggle.getA
 const filters=[...document.querySelectorAll('.filter')],cards=[...document.querySelectorAll('.class-card')],counter=document.querySelector('#class-count');
 filters.forEach(btn=>btn.addEventListener('click',()=>{const filter=btn.dataset.filter;let count=0;filters.forEach(b=>{const active=b===btn;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});cards.forEach(card=>{const visible=filter==='all'||card.dataset.categories.split(' ').includes(filter);card.hidden=!visible;if(visible)count++});counter.textContent=count+' PROGRAM'+(count===1?'':'S')}));
 const dialog=document.getElementById('detail-dialog'),close=document.getElementById('dialog-close'),done=document.getElementById('dialog-done');let lastFocus=null;
-function openDetail(data,kind){if(!data)return;lastFocus=document.activeElement;document.getElementById('dialog-kicker').textContent=data.kicker;document.getElementById('dialog-title').textContent=data.title;document.getElementById('dialog-description').textContent=data.intro;document.getElementById('dialog-detail').innerHTML='<p>'+data.detail+'</p><p>'+data.note+'</p>';const cta=dialog.querySelector('.dialog-actions a');cta.href=kind==='teacher'?'mailto:Serrah@dancepds.com?subject='+encodeURIComponent('Question about the PDS faculty'):registration;cta.textContent=kind==='teacher'?'ASK ABOUT OUR TEACHERS ↗':'EXPLORE REGISTRATION ↗';dialog.showModal();document.body.classList.add('modal-open')}
+function openDetail(data,kind){if(!data)return;lastFocus=document.activeElement;document.getElementById('dialog-kicker').textContent=data.kicker;document.getElementById('dialog-title').textContent=data.title;document.getElementById('dialog-description').textContent=data.intro;document.getElementById('dialog-detail').innerHTML='<p>'+data.detail+'</p><p>'+data.note+'</p>';const cta=dialog.querySelector('.dialog-actions a');cta.href=kind==='teacher'?'mailto:Serrah@dancepds.com?subject='+encodeURIComponent('Question about the PDS faculty'):registration;cta.textContent=kind==='teacher'?'ASK ABOUT OUR TEACHERS ↗':'EXPLORE REGISTRATION ↗';pdsReplaceArrowGlyphs(cta);dialog.showModal();document.body.classList.add('modal-open')}
 function closeDetail(){if(dialog.open)dialog.close()}
 cards.forEach(card=>card.addEventListener('click',()=>openDetail(classes[card.dataset.class],'class')));
 document.querySelectorAll('.faculty-card').forEach(card=>card.addEventListener('click',()=>openDetail(teachers[card.dataset.teacher],'teacher')));
